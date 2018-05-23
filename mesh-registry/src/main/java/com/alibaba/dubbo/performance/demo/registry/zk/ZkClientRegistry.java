@@ -1,12 +1,22 @@
-package com.alibaba.dubbo.performance.demo.registry;
+package com.alibaba.dubbo.performance.demo.registry.zk;
 
+import com.alibaba.dubbo.performance.demo.common.Constants;
 import com.alibaba.dubbo.performance.demo.common.RpcException;
 import com.alibaba.dubbo.performance.demo.common.ServerNode;
+import com.alibaba.dubbo.performance.demo.common.ServerNodeUtils;
 import com.alibaba.dubbo.performance.demo.monitor.common.DynamicHostSet;
-import com.coreos.jetcd.Client;
-import com.coreos.jetcd.Watch;
-import com.coreos.jetcd.data.ByteSequence;
+import com.alibaba.dubbo.performance.demo.registry.IRegistry;
 import org.apache.commons.lang.StringUtils;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.imps.CuratorFrameworkState;
+import org.apache.curator.framework.recipes.cache.ChildData;
+import org.apache.curator.framework.recipes.cache.PathChildrenCache;
+import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode;
+import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
+import org.apache.curator.framework.recipes.cache.PathChildrenCacheListener;
+import org.apache.curator.framework.state.ConnectionState;
+import org.apache.curator.framework.state.ConnectionStateListener;
+import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
@@ -16,20 +26,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 客户端
+ * 客户端注册（zookeeper方式） <br>
+ * <br>
+ * 使用Apache的Curator框架监控zookeeper节点的变化 <br>
+ * 参考资料： <a href="http://www.cnblogs.com/hupengcool/p/3982301.html">使用Apache
+ * Curator监控Zookeeper的Node和Path的状态</a>
+ * <p>
+ *
  */
-public class EtcdClient implements IRegistry {
+public class ZkClientRegistry implements IRegistry {
+
     /** LOGGER */
     private final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
-    /** etcd配置路径 */
+    /** zookeeper配置路径 */
     private final String configPath;
 
     /** {@link PathChildrenCache} */
     private PathChildrenCache cachedPath;
 
-    /** {@link Client} */
-    private final Client etcd;
+    /** {@link CuratorFramework} */
+    private final CuratorFramework zookeeper;
 
     /** {@link DynamicHostSet} */
     private final DynamicHostSet hostSet = new DynamicHostSet();
@@ -42,19 +59,24 @@ public class EtcdClient implements IRegistry {
 
     /**
      * @param configPath
-     * @param etcd
+     * @param zookeeper
      * @param clientNode
      */
-    public EtcdClient(String configPath, Client etcd, ServerNode clientNode) {
+    public ZkClientRegistry(String configPath, CuratorFramework zookeeper, ServerNode clientNode) {
         super();
         this.configPath = configPath;
-        this.etcd = etcd;
+        this.zookeeper = zookeeper;
         this.clientNode = clientNode;
     }
 
     @Override
     public void register(String config) throws RpcException {
-        // 构建etcd节点
+        // 如果zk尚未启动,则启动
+        if (zookeeper.getState() == CuratorFrameworkState.LATENT) {
+            zookeeper.start();
+        }
+
+        // 构建zk节点
         addListener(config);
         buildPathClients(config);
         buildPathChildrenCache(true);
@@ -70,7 +92,7 @@ public class EtcdClient implements IRegistry {
     /**
      * 创建clients节点
      * <p>
-     *
+     * 
      * @param config
      *            配置信息
      * @throws RpcException
@@ -84,7 +106,7 @@ public class EtcdClient implements IRegistry {
             // 创建节点
             try {
                 String pathName = zookeeper.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL_SEQUENTIAL).forPath(pathBuilder.toString(),
-                        config.getBytes(Constants.UTF8));
+                                                                                                                                 config.getBytes(Constants.UTF8));
                 if (StringUtils.isNotEmpty(pathName)) {
                     clientNode.setExt(pathName.substring(pathName.indexOf(":i_") + 1));
                 }
@@ -117,7 +139,7 @@ public class EtcdClient implements IRegistry {
     /**
      * 添加监听器，防止网络异常或者zookeeper挂掉的情况
      * <p>
-     *
+     * 
      * @param config
      *            配置信息
      */
@@ -146,7 +168,7 @@ public class EtcdClient implements IRegistry {
     /**
      * 创建缓存路径
      * <p>
-     *
+     * 
      * @param cacheData
      */
     private void buildPathChildrenCache(Boolean cacheData) {
@@ -178,7 +200,7 @@ public class EtcdClient implements IRegistry {
      * <br>
      * 注意：构建时直接操作zookeeper，不使用PathChildrenCache,原因参考：{@link PathChildrenCache}
      * <p>
-     *
+     * 
      * @throws RpcException
      */
     private void build() throws RpcException {
@@ -231,7 +253,7 @@ public class EtcdClient implements IRegistry {
     /**
      * 刷新容器
      * <p>
-     *
+     * 
      * @param current
      */
     private void freshContainer(List<ServerNode> current) {
@@ -254,4 +276,5 @@ public class EtcdClient implements IRegistry {
             LOGGER.error(e.getMessage(), e);
         }
     }
+
 }

@@ -1,8 +1,9 @@
-package com.alibaba.dubbo.performance.demo.registry;
+package com.alibaba.dubbo.performance.demo.registry.zk;
 
-import com.jdd.rpc.RpcException;
-import com.jdd.rpc.common.Constants;
-import com.jdd.rpc.loadbalance.common.DynamicHostSet;
+import com.alibaba.dubbo.performance.demo.common.Constants;
+import com.alibaba.dubbo.performance.demo.common.RpcException;
+import com.alibaba.dubbo.performance.demo.monitor.common.DynamicHostSet;
+import com.alibaba.dubbo.performance.demo.registry.IRegistry;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.imps.CuratorFrameworkState;
 import org.apache.curator.framework.state.ConnectionState;
@@ -24,7 +25,7 @@ import java.util.List;
  * <p>
  *
  */
-public class EtcdServerRegistry implements IRegistry {
+public class ZkServerRegistry implements IRegistry {
 
     /** LOGGER */
     private final Logger LOGGER = LoggerFactory.getLogger(getClass());
@@ -47,7 +48,7 @@ public class EtcdServerRegistry implements IRegistry {
      * @param address
      * @param auth
      */
-    public EtcdServerRegistry(CuratorFramework zookeeper, String zkPath, String address, String auth) {
+    public ZkServerRegistry(CuratorFramework zookeeper, String zkPath, String address, String auth) {
         this.zookeeper = zookeeper;
         this.zkPath = zkPath;
         this.address = address;

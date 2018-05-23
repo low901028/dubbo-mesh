@@ -4,6 +4,7 @@ package com.alibaba.dubbo.performance.demo.registry;
 import com.alibaba.dubbo.performance.demo.common.RpcException;
 import com.alibaba.dubbo.performance.demo.common.ServerNode;
 import com.alibaba.dubbo.performance.demo.monitor.common.DynamicHostSet;
+import com.alibaba.dubbo.performance.demo.registry.IRegistry;
 
 /**
  * 默认注册方式（配置地址）

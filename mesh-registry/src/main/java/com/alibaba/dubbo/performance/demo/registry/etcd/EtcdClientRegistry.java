@@ -1,10 +1,13 @@
-package com.alibaba.dubbo.performance.demo.registry;
+package com.alibaba.dubbo.performance.demo.registry.etcd;
 
-import com.jdd.rpc.RpcException;
-import com.jdd.rpc.common.Constants;
-import com.jdd.rpc.common.ServerNode;
-import com.jdd.rpc.common.ServerNodeUtils;
-import com.jdd.rpc.loadbalance.common.DynamicHostSet;
+import com.alibaba.dubbo.performance.demo.common.Constants;
+import com.alibaba.dubbo.performance.demo.common.RpcException;
+import com.alibaba.dubbo.performance.demo.common.ServerNode;
+import com.alibaba.dubbo.performance.demo.common.ServerNodeUtils;
+import com.alibaba.dubbo.performance.demo.monitor.common.DynamicHostSet;
+import com.alibaba.dubbo.performance.demo.registry.IRegistry;
+import com.coreos.jetcd.Client;
+import com.coreos.jetcd.KV;
 import org.apache.commons.lang.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.imps.CuratorFrameworkState;
@@ -41,11 +44,11 @@ public class EtcdClientRegistry implements IRegistry {
     /** zookeeper配置路径 */
     private final String configPath;
 
-    /** {@link PathChildrenCache} */
-    private PathChildrenCache cachedPath;
+    /** {@link KV} */
+    private KV cachedPath;
 
-    /** {@link CuratorFramework} */
-    private final CuratorFramework zookeeper;
+    /** {@link Client} */
+    private final Client etcd;
 
     /** {@link DynamicHostSet} */
     private final DynamicHostSet hostSet = new DynamicHostSet();
@@ -58,22 +61,19 @@ public class EtcdClientRegistry implements IRegistry {
 
     /**
      * @param configPath
-     * @param zookeeper
+     * @param etcd
      * @param clientNode
      */
-    public EtcdClientRegistry(String configPath, CuratorFramework zookeeper, ServerNode clientNode) {
+    public EtcdClientRegistry(String configPath, Client etcd, ServerNode clientNode) {
         super();
         this.configPath = configPath;
-        this.zookeeper = zookeeper;
+        this.etcd = etcd;
         this.clientNode = clientNode;
     }
 
     @Override
     public void register(String config) throws RpcException {
-        // 如果zk尚未启动,则启动
-        if (zookeeper.getState() == CuratorFrameworkState.LATENT) {
-            zookeeper.start();
-        }
+        // 如果etcd尚未启动,则启动
 
         // 构建zk节点
         addListener(config);
